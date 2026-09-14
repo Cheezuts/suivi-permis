@@ -1084,24 +1084,6 @@ function ListView({ entries, errorLabelById, compact, setCompact, editEntry, con
     return list;
   }, [entries, search, resultFilter, sortKey, sortDir]);
 
-  function toggleSort(key) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
-  }
-
-  function SortableTh({ label, sortKeyName }) {
-    const active = sortKey === sortKeyName;
-    return (
-      <th className="sortable" onClick={() => toggleSort(sortKeyName)}>
-        {label} <span className={`sort-arrow ${active ? "active" : ""}`}>{active ? (sortDir === "asc" ? "▲" : "▼") : "↕"}</span>
-      </th>
-    );
-  }
-
   return (
     <div className="panel">
       <div className="panel-head">
@@ -1113,7 +1095,7 @@ function ListView({ entries, errorLabelById, compact, setCompact, editEntry, con
       </div>
 
       <div className="filter-row">
-        <label className="filter-field" style={{ flex: 1, minWidth: 220 }}>
+        <label className="filter-field grow">
           <span>Recherche</span>
           <input
             type="text"
@@ -1130,6 +1112,26 @@ function ListView({ entries, errorLabelById, compact, setCompact, editEntry, con
             <option>Échec</option>
           </select>
         </label>
+        {!compact && (
+          <label className="filter-field">
+            <span>Trier par</span>
+            <select value={sortKey} onChange={(e) => setSortKey(e.target.value)}>
+              <option value="date">Date</option>
+              <option value="eleve">Élève</option>
+              <option value="categorie">Catégorie</option>
+              <option value="resultat">Résultat</option>
+              <option value="centre">Centre</option>
+              <option value="inspecteur">Inspecteur</option>
+              <option value="moniteur">Moniteur</option>
+              <option value="passages">Passages</option>
+            </select>
+          </label>
+        )}
+        {!compact && (
+          <button type="button" className="sort-dir-btn" onClick={() => setSortDir((d) => (d === "asc" ? "desc" : "asc"))} title="Inverser l'ordre">
+            {sortDir === "asc" ? "▲ Croissant" : "▼ Décroissant"}
+          </button>
+        )}
       </div>
 
       {duplicates.list.length > 0 && (
@@ -1147,94 +1149,79 @@ function ListView({ entries, errorLabelById, compact, setCompact, editEntry, con
         <p className="empty">Aucune fiche pour le moment.</p>
       ) : visibleEntries.length === 0 ? (
         <p className="empty">Aucune fiche ne correspond à ta recherche.</p>
-      ) : (
+      ) : compact ? (
         <div className="table-wrap">
-          <table className={compact ? "" : "fixed-table"}>
-            {!compact && (
-              <colgroup>
-                <col style={{ width: "13%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "17%" }} />
-                <col style={{ width: "8%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "16%" }} />
-                <col style={{ width: "13%" }} />
-                <col style={{ width: "4%" }} />
-              </colgroup>
-            )}
+          <table>
             <thead>
               <tr>
-                {compact ? (
-                  <>
-                    <th>Erreur(s) éliminatoire(s)</th>
-                    <th>Inspecteur</th>
-                    <th>Catégorie</th>
-                  </>
-                ) : (
-                  <>
-                    <SortableTh label="Élève" sortKeyName="eleve" />
-                    <SortableTh label="Date" sortKeyName="date" />
-                    <SortableTh label="Catégorie" sortKeyName="categorie" />
-                    <SortableTh label="Résultat" sortKeyName="resultat" />
-                    <th>Centre / Inspecteur / Moniteur</th>
-                    <th>Heures (nous / autre)</th>
-                    <SortableTh label="Passages" sortKeyName="passages" />
-                    <th>Erreur(s) éliminatoire(s)</th>
-                    <th>Remarques</th>
-                    <th></th>
-                  </>
-                )}
+                <th>Erreur(s) éliminatoire(s)</th>
+                <th>Inspecteur</th>
+                <th>Catégorie</th>
               </tr>
             </thead>
             <tbody>
               {visibleEntries.map((entry) => {
                 const errLabels = entry.erreursElim.map((id) => errorLabelById[id]).filter(Boolean);
-                const isDuplicate = entry.eleve && duplicates.map[entry.eleve.trim().toLowerCase()];
-                if (compact) {
-                  return (
-                    <tr key={entry.id}>
-                      <td>{errLabels.length ? errLabels.join(", ") : "—"}</td>
-                      <td>{entry.inspecteur || "—"}</td>
-                      <td><span className="cat-badge">{entry.categorie}</span></td>
-                    </tr>
-                  );
-                }
                 return (
                   <tr key={entry.id}>
-                    <td>
-                      {entry.eleve || "—"}
-                      {isDuplicate && <span className="dup-badge" title={`${isDuplicate} fiches pour cet élève`}>×{isDuplicate}</span>}
-                    </td>
-                    <td>{formatDateFr(entry.date)}</td>
+                    <td>{errLabels.length ? errLabels.join(", ") : "—"}</td>
+                    <td>{entry.inspecteur || "—"}</td>
                     <td><span className="cat-badge">{entry.categorie}</span></td>
-                    <td><span className={`result-badge ${entry.resultat === "Réussite" ? "success" : "danger"}`}>{entry.resultat || "—"}</span></td>
-                    <td className="stacked-cell">
-                      <span>{entry.centre || "—"}</span>
-                      <span>{entry.inspecteur || "—"}</span>
-                      <span>{entry.moniteur || "—"}</span>
-                    </td>
-                    <td>{entry.heuresNous || "0"} / {entry.heuresAutre || "0"}</td>
-                    <td>{entry.passages || "—"}</td>
-                    <td className="wrap-cell">{errLabels.length ? errLabels.join(", ") : "—"}</td>
-                    <td className="wrap-cell">{entry.remarques || "—"}</td>
-                    <td className="row-actions">
-                      <button className="icon-btn" title="Modifier" onClick={() => editEntry(entry)}>✏️</button>
-                      {confirmDelete === entry.id ? (
-                        <>
-                          <button className="icon-btn danger" title="Confirmer la suppression" onClick={() => deleteEntry(entry.id)}>✓</button>
-                          <button className="icon-btn" title="Annuler" onClick={() => setConfirmDelete(null)}>✕</button>
-                        </>
-                      ) : (
-                        <button className="icon-btn danger" title="Supprimer" onClick={() => setConfirmDelete(entry.id)}>🗑️</button>
-                      )}
-                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+      ) : (
+        <div className="fiche-list">
+          {visibleEntries.map((entry) => {
+            const errLabels = entry.erreursElim.map((id) => errorLabelById[id]).filter(Boolean);
+            const isDuplicate = entry.eleve && duplicates.map[entry.eleve.trim().toLowerCase()];
+            return (
+              <div className="fiche-card" key={entry.id}>
+                <div className="fiche-card-head">
+                  <div className="fiche-card-title">
+                    <strong>{entry.eleve || "Élève sans nom"}</strong>
+                    {isDuplicate && <span className="dup-badge" title={`${isDuplicate} fiches pour cet élève`}>×{isDuplicate}</span>}
+                    <span className="cat-badge">{entry.categorie}</span>
+                  </div>
+                  <span className={`result-badge ${entry.resultat === "Réussite" ? "success" : "danger"}`}>{entry.resultat || "—"}</span>
+                </div>
+
+                <div className="fiche-grid">
+                  <div className="fiche-field"><span className="fiche-label">Date</span><span>{formatDateFr(entry.date)}</span></div>
+                  <div className="fiche-field"><span className="fiche-label">Centre</span><span>{entry.centre || "—"}</span></div>
+                  <div className="fiche-field"><span className="fiche-label">Inspecteur</span><span>{entry.inspecteur || "—"}</span></div>
+                  <div className="fiche-field"><span className="fiche-label">Moniteur</span><span>{entry.moniteur || "—"}</span></div>
+                  <div className="fiche-field"><span className="fiche-label">Heures (nous / autre)</span><span>{entry.heuresNous || "0"} / {entry.heuresAutre || "0"}</span></div>
+                  <div className="fiche-field"><span className="fiche-label">Passages</span><span>{entry.passages || "—"}</span></div>
+                </div>
+
+                <div className="fiche-section">
+                  <span className="fiche-label">Erreur(s) éliminatoire(s)</span>
+                  <p>{errLabels.length ? errLabels.join(", ") : "—"}</p>
+                </div>
+
+                <div className="fiche-section">
+                  <span className="fiche-label">Remarques</span>
+                  <p>{entry.remarques || "—"}</p>
+                </div>
+
+                <div className="fiche-actions">
+                  <button className="icon-btn" onClick={() => editEntry(entry)}>✏️ Modifier</button>
+                  {confirmDelete === entry.id ? (
+                    <>
+                      <button className="icon-btn danger" onClick={() => deleteEntry(entry.id)}>✓ Confirmer</button>
+                      <button className="icon-btn" onClick={() => setConfirmDelete(null)}>✕ Annuler</button>
+                    </>
+                  ) : (
+                    <button className="icon-btn danger" onClick={() => setConfirmDelete(entry.id)}>🗑️ Supprimer</button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -1394,9 +1381,12 @@ function WaitlistView({ waitlist, reorderWaitlist, resetWaitlistOrder, errorLabe
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap');
 
+.app, .app *, .app *::before, .app *::after { box-sizing:border-box; }
 .app { --ink:#23282D; --muted:#5B6570; --bg:#EEF0F2; --surface:#FFFFFF; --line:#DDE1E4;
   --blue:#1B4B7A; --red:#C0272D; --amber:#E8A93A;
-  font-family:'Inter',sans-serif; color:var(--ink); background:var(--bg); min-height:100%; }
+  font-family:'Inter',sans-serif; color:var(--ink); background:var(--bg); min-height:100%;
+  overflow-x:hidden; width:100%; }
+body, html, #root { overflow-x:hidden; max-width:100%; }
 
 .topbar { background:var(--surface); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:10; }
 .topbar-inner { max-width:1100px; margin:0 auto; padding:16px 20px 12px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
@@ -1404,7 +1394,7 @@ const CSS = `
 .brand-mark { width:40px; height:40px; border-radius:8px; background:var(--blue); color:#fff; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px; display:flex; align-items:center; justify-content:center; }
 .brand-text h1 { font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:22px; letter-spacing:0.02em; margin:0; line-height:1.1; }
 .brand-text p { margin:2px 0 0; font-size:12.5px; color:var(--muted); }
-.tabs { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; }
+.tabs { display:flex; gap:4px; background:var(--bg); border-radius:10px; padding:4px; flex-wrap:wrap; row-gap:4px; }
 .tabs button { border:none; background:transparent; padding:8px 14px; border-radius:7px; font-size:13.5px; font-weight:600; color:var(--muted); cursor:pointer; }
 .tabs button.active { background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,0.08); }
 .backup-actions { display:flex; gap:8px; flex-wrap:wrap; }
@@ -1426,16 +1416,17 @@ const CSS = `
 .panel-head select { border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-family:'Inter',sans-serif; }
 
 .filter-row { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:18px; }
-.filter-field { display:flex; flex-direction:column; gap:4px; min-width:170px; }
+.filter-field { display:flex; flex-direction:column; gap:4px; min-width:150px; flex:1 1 150px; }
+.filter-field.grow { flex:2 1 200px; }
 .filter-field span { font-size:12px; font-weight:600; color:var(--muted); }
-.filter-field select { border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--ink); }
-.filter-field select:focus { outline:2px solid var(--blue); outline-offset:1px; }
+.filter-field select, .filter-field input { width:100%; box-sizing:border-box; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-family:'Inter',sans-serif; font-size:13.5px; background:var(--surface); color:var(--ink); }
+.filter-field select:focus, .filter-field input:focus { outline:2px solid var(--blue); outline-offset:1px; }
 
 .empty { color:var(--muted); font-size:14px; padding:20px 0; }
 
-.pie-wrap { display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
-.pie-wrap > div:first-child { flex:1; min-width:280px; }
-.legend-list { list-style:none; margin:0; padding:0; flex:1; min-width:220px; display:flex; flex-direction:column; gap:8px; }
+.pie-wrap { display:flex; gap:24px; align-items:center; flex-wrap:wrap; min-width:0; }
+.pie-wrap > div:first-child { flex:1 1 220px; min-width:0; max-width:100%; }
+.legend-list { list-style:none; margin:0; padding:0; flex:1 1 200px; min-width:0; display:flex; flex-direction:column; gap:8px; }
 .legend-list li { display:flex; align-items:center; gap:8px; font-size:13.5px; }
 .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
 .legend-label { flex:1; }
@@ -1451,7 +1442,7 @@ const CSS = `
 .field input:focus, .field select:focus, .field textarea:focus { outline:2px solid var(--blue); outline-offset:1px; }
 .hint { font-size:12.5px; color:var(--muted); margin:0 0 4px; }
 
-.error-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:8px; margin-bottom:12px; }
+.error-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(min(230px, 100%),1fr)); gap:8px; margin-bottom:12px; }
 .error-chip { display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px; padding:9px 11px; font-size:13px; cursor:pointer; background:var(--bg); }
 .error-chip.checked { background:#FCEAEA; border-color:var(--red); color:var(--red); font-weight:600; }
 .error-chip input { accent-color:var(--red); }
@@ -1468,16 +1459,24 @@ button.primary { background:var(--blue); color:#fff; border:none; border-radius:
 
 .table-wrap { overflow-x:auto; }
 table { width:100%; border-collapse:collapse; font-size:13px; }
-table.fixed-table { table-layout:fixed; }
 th { text-align:left; font-size:11.5px; text-transform:uppercase; letter-spacing:0.03em; color:var(--muted); font-weight:700; border-bottom:1px solid var(--line); padding:8px 8px; }
-.fixed-table th { white-space:normal; line-height:1.3; }
 td { padding:9px 8px; border-bottom:1px solid var(--line); vertical-align:top; word-break:break-word; }
-.wrap-cell { white-space:normal; }
-.stacked-cell { display:flex; flex-direction:column; gap:2px; font-size:12.5px; }
-.remarks-cell { max-width:220px; }
-.row-actions { white-space:nowrap; text-align:center; }
-.icon-btn { border:none; background:none; color:var(--blue); font-size:14px; cursor:pointer; margin-right:4px; padding:2px 4px; }
-.icon-btn.danger { color:var(--red); }
+.sort-dir-btn { border:1px solid var(--line); background:var(--surface); border-radius:8px; padding:8px 12px; font-size:12.5px; font-weight:600; color:var(--ink); cursor:pointer; align-self:flex-end; }
+
+.fiche-list { display:flex; flex-direction:column; gap:14px; min-width:0; }
+.fiche-card { border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--bg); min-width:0; }
+.fiche-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.fiche-card-title { display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-width:0; }
+.fiche-card-title strong { font-size:15px; word-break:break-word; }
+.fiche-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px 14px; margin-bottom:10px; }
+.fiche-field { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.fiche-field span:last-child { font-size:13px; word-break:break-word; }
+.fiche-label { font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; color:var(--muted); font-weight:700; }
+.fiche-section { margin-bottom:10px; min-width:0; }
+.fiche-section p { margin:2px 0 0; font-size:13px; word-break:break-word; white-space:pre-wrap; }
+.fiche-actions { display:flex; gap:6px; flex-wrap:wrap; padding-top:6px; border-top:1px solid var(--line); }
+.icon-btn { border:1px solid var(--line); background:var(--surface); color:var(--blue); font-size:12.5px; font-weight:600; cursor:pointer; padding:6px 10px; border-radius:7px; }
+.icon-btn.danger { color:var(--red); border-color:#F2C6C6; }
 .cat-badge { display:inline-block; background:var(--blue); color:#fff; font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:5px; }
 .dup-badge { display:inline-block; margin-left:6px; background:var(--amber); color:#5A3B00; font-size:10.5px; font-weight:800; padding:1px 6px; border-radius:10px; vertical-align:middle; }
 .duplicates-banner { background:#FFF6E9; border:1px solid var(--amber); border-radius:8px; padding:10px 12px; font-size:13px; margin-bottom:16px; color:#5A3B00; }
@@ -1525,8 +1524,26 @@ th.sortable:hover { color:var(--ink); }
 .hint-lost { color:var(--red); font-weight:700; }
 
 @media (max-width:720px) {
+  .content { padding:16px 14px 48px; }
+  .topbar-inner { padding:14px 14px 10px; }
   .card-row { grid-template-columns:repeat(2,1fr); }
   .grid-2 { grid-template-columns:1fr; }
-  .topbar-inner { flex-direction:column; align-items:flex-start; }
+  .topbar-inner { flex-direction:column; align-items:stretch; }
+  .tabs { width:100%; }
+  .tabs button { flex:1 1 auto; padding:8px 6px; font-size:12px; text-align:center; }
+  .backup-actions { width:100%; }
+  .backup-btn { flex:1 1 auto; text-align:center; }
+  .panel { padding:14px; }
+  .fiche-grid { grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); }
+  .filter-row { gap:10px; }
+  .pie-wrap { gap:16px; }
+}
+
+@media (max-width:420px) {
+  .card-row { grid-template-columns:1fr 1fr; }
+  .stat-value { font-size:26px; }
+  .brand-text h1 { font-size:19px; }
+  .waitlist-row { gap:8px; padding:10px; }
+  .waitlist-num { min-width:36px; font-size:15px; }
 }
 `;
